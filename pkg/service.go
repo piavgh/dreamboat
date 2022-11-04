@@ -172,9 +172,10 @@ func (s *DefaultService) beaconEventLoop(ctx context.Context, client BeaconClien
 		}
 		if syncStatus.IsSyncing {
 			s.Log.Debug("beacon is stil syncing")
+			time.Sleep(3 * time.Second)
 			continue
 		}
-	
+
 		err = s.updateProposerDuties(ctx, client, Slot(syncStatus.HeadSlot))
 		if err != nil {
 			return err
@@ -182,7 +183,6 @@ func (s *DefaultService) beaconEventLoop(ctx context.Context, client BeaconClien
 
 		break
 	}
-	
 
 	defer s.Log.Debug("beacon loop stopped")
 
