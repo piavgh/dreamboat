@@ -105,52 +105,15 @@ func (s *DefaultDatastore) PutHeader(ctx context.Context, slot Slot, header Head
 		return err
 	}
 
-	data, err := json.Marshal(headers)
-	if err != nil {
-		return err
-	}
-
-	if err := s.TTLStorage.PutWithTTL(ctx, HeaderKey(slot), data, ttl); err != nil {
-		return err
-	}
-
 	if err := s.putMaxProfitHeader(ctx, slot, header, ttl); err != nil {
 		return fmt.Errorf("failed to set header in max profit list: %w", err)
 	}
 
-	return nil
-}
-
-func (s *DefaultDatastore) putMaxProfitHeader(ctx context.Context, slot Slot, header HeaderAndTrace, ttl time.Duration) error {
-	headers, err := s.getHeaders(ctx, HeaderMaxProfitKey(slot))
-	if errors.Is(err, ds.ErrNotFound) {
-		headers = make([]HeaderAndTrace, 0, 1)
-	} else if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return err
-	}
-
-	// remove submission from same builder
-	i := 0
-	for ; i < len(headers); i++ {
-		if headers[i].Trace.BuilderPubkey == header.Trace.BuilderPubkey {
-			headers[i] = header
-			break
-		}
-	}
-	if i == len(headers) {
-		headers = append(headers, header)
-	}
-
-	// sort by bid value DESC
-	sort.Slice(headers, func(i, j int) bool {
-		return headers[i].Trace.Value.Cmp(&headers[j].Trace.Value) > 0
-	})
-
 	data, err := json.Marshal(headers)
 	if err != nil {
 		return err
 	}
-	return s.TTLStorage.PutWithTTL(ctx, HeaderMaxProfitKey(slot), data, ttl)
+	return s.TTLStorage.PutWithTTL(ctx, HeaderKey(slot), data, ttl)
 }
 
 func (s *DefaultDatastore) GetHeaders(ctx context.Context, query Query) ([]HeaderAndTrace, error) {
@@ -194,6 +157,38 @@ func (s *DefaultDatastore) deduplicateHeaders(headers []HeaderAndTrace, query Qu
 	}
 
 	return filtered
+}
+
+func (s *DefaultDatastore) putMaxProfitHeader(ctx context.Context, slot Slot, header HeaderAndTrace, ttl time.Duration) error {
+	headers, err := s.getHeaders(ctx, HeaderMaxProfitKey(slot))
+	if errors.Is(err, ds.ErrNotFound) {
+		headers = make([]HeaderAndTrace, 0, 1)
+	} else if err != nil && !errors.Is(err, ds.ErrNotFound) {
+		return err
+	}
+
+	// remove submission from same builder
+	i := 0
+	for ; i < len(headers); i++ {
+		if headers[i].Trace.BuilderPubkey == header.Trace.BuilderPubkey {
+			headers[i] = header
+			break
+		}
+	}
+	if i == len(headers) {
+		headers = append(headers, header)
+	}
+
+	// sort by bid value DESC
+	sort.Slice(headers, func(i, j int) bool {
+		return headers[i].Trace.Value.Cmp(&headers[j].Trace.Value) > 0
+	})
+
+	data, err := json.Marshal(headers)
+	if err != nil {
+		return err
+	}
+	return s.TTLStorage.PutWithTTL(ctx, HeaderMaxProfitKey(slot), data, ttl)
 }
 
 func (s *DefaultDatastore) GetMaxProfitHeadersDesc(ctx context.Context, slot Slot) ([]HeaderAndTrace, error) {
