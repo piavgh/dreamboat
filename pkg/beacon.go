@@ -84,7 +84,7 @@ func (b *MultiBeaconClient) WaitSynced(ctx context.Context) (*SyncStatusPayloadD
 			return status, err
 		}
 
-		b.Log.Debug("bacon clients are syncing...")
+		b.Log.Debug("beacon clients are syncing...")
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -256,7 +256,7 @@ func (b *beaconClient) WaitSynced(ctx context.Context) (*SyncStatusPayloadData, 
 			return status, err
 		}
 
-		b.log.Debug("bacon client is syncing...")
+		b.log.Debug("beacon client is syncing...")
 
 		select {
 		case <-ctx.Done():
