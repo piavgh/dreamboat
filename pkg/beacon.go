@@ -78,17 +78,19 @@ func (b *MultiBeaconClient) GetProposerDuties(epoch Epoch) (*RegisteredProposers
 }
 
 func (b *MultiBeaconClient) WaitSynced(ctx context.Context) (*SyncStatusPayloadData, error) {
-	for ctx.Err() == nil {
+	for {
 		status, err := b.SyncStatus()
 		if err != nil || !status.IsSyncing {
 			return status, err
 		}
 
 		b.Log.Debug("bacon clients are syncing...")
-		time.Sleep(3 * time.Second)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(3 * time.Second):
+		}
 	}
-
-	return nil, ctx.Err()
 }
 
 func (b *MultiBeaconClient) SyncStatus() (*SyncStatusPayloadData, error) {
@@ -248,16 +250,20 @@ func (b *beaconClient) GetProposerDuties(epoch Epoch) (*RegisteredProposersRespo
 
 // WaitSynced waits until beacon is synced of context is cancelled
 func (b *beaconClient) WaitSynced(ctx context.Context) (*SyncStatusPayloadData, error) {
-	for ctx.Err() == nil {
+	for {
 		status, err := b.SyncStatus()
 		if err != nil || !status.IsSyncing {
 			return status, err
 		}
-		b.log.Debug("bacon client is syncing...")
-		time.Sleep(3 * time.Second)
-	}
 
-	return nil, ctx.Err()
+		b.log.Debug("bacon client is syncing...")
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(3 * time.Second):
+		}
+	}
 }
 
 // SyncStatus returns the current node sync-status
