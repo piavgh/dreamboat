@@ -29,6 +29,7 @@ var (
 type BeaconClient interface {
 	SubscribeToHeadEvents(ctx context.Context, slotC chan HeadEvent)
 	GetProposerDuties(Epoch) (*RegisteredProposersResponse, error)
+	WaitSynced(context.Context) (*SyncStatusPayloadData, error)
 	SyncStatus() (*SyncStatusPayloadData, error)
 	KnownValidators(Slot) (AllValidatorsResponse, error)
 	Endpoint() string
@@ -74,6 +75,20 @@ func (b *MultiBeaconClient) GetProposerDuties(epoch Epoch) (*RegisteredProposers
 	}
 
 	return nil, ErrNodesUnavailable
+}
+
+func (b *MultiBeaconClient) WaitSynced(ctx context.Context) (*SyncStatusPayloadData, error) {
+	for ctx.Err() == nil {
+		status, err := b.SyncStatus()
+		if err != nil || !status.IsSyncing {
+			return status, err
+		}
+
+		b.Log.Debug("bacon clients are syncing...")
+		time.Sleep(3 * time.Second)
+	}
+
+	return nil, ctx.Err()
 }
 
 func (b *MultiBeaconClient) SyncStatus() (*SyncStatusPayloadData, error) {
@@ -229,6 +244,20 @@ func (b *beaconClient) GetProposerDuties(epoch Epoch) (*RegisteredProposersRespo
 	resp := new(RegisteredProposersResponse)
 	err := b.queryBeacon(&u, "GET", resp)
 	return resp, err
+}
+
+// WaitSynced waits until beacon is synced of context is cancelled
+func (b *beaconClient) WaitSynced(ctx context.Context) (*SyncStatusPayloadData, error) {
+	for ctx.Err() == nil {
+		status, err := b.SyncStatus()
+		if err != nil || !status.IsSyncing {
+			return status, err
+		}
+		b.log.Debug("bacon client is syncing...")
+		time.Sleep(3 * time.Second)
+	}
+
+	return nil, ctx.Err()
 }
 
 // SyncStatus returns the current node sync-status

@@ -165,23 +165,14 @@ func (s *DefaultService) setReady() {
 }
 
 func (s *DefaultService) beaconEventLoop(ctx context.Context, client BeaconClient) error {
-	for {
-		syncStatus, err := client.SyncStatus()
-		if err != nil {
-			return err
-		}
-		if syncStatus.IsSyncing {
-			s.Log.Debug("beacon is stil syncing")
-			time.Sleep(3 * time.Second)
-			continue
-		}
+	syncStatus, err := client.WaitSynced(ctx)
+	if err != nil {
+		return err
+	}
 
-		err = s.updateProposerDuties(ctx, client, Slot(syncStatus.HeadSlot))
-		if err != nil {
-			return err
-		}
-
-		break
+	err = s.updateProposerDuties(ctx, client, Slot(syncStatus.HeadSlot))
+	if err != nil {
+		return err
 	}
 
 	defer s.Log.Debug("beacon loop stopped")
