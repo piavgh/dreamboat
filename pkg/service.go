@@ -397,10 +397,10 @@ func (s *DefaultService) getTailDelivered(ctx context.Context, limit, cursor uin
 	headSlot := s.state.Beacon().HeadSlot()
 	start := headSlot
 	if cursor != 0 {
-		start = min(headSlot, Slot(cursor))
+		start = Min(headSlot, Slot(cursor))
 	}
 
-	stop := start - Slot(s.Config.TTL/DurationPerSlot)
+	stop := start - Min(Slot(s.Config.TTL/DurationPerSlot), start-1)
 
 	batch := make([]BidTraceWithTimestamp, 0, limit)
 	queries := make([]Query, 0, limit)
@@ -410,7 +410,7 @@ func (s *DefaultService) getTailDelivered(ctx context.Context, limit, cursor uin
 		WithField("stop", stop).
 		Debug("querying delivered payload traces")
 
-	for highSlot := start; len(batch) < int(limit) && stop <= highSlot; highSlot -= Slot(limit) {
+	for highSlot := start; len(batch) < int(limit) && stop <= highSlot; highSlot -= Min(Slot(limit), highSlot) {
 		queries = queries[:0]
 		for s := highSlot; highSlot-Slot(limit) < s && stop <= s; s-- {
 			queries = append(queries, Query{Slot: s})
@@ -420,7 +420,7 @@ func (s *DefaultService) getTailDelivered(ctx context.Context, limit, cursor uin
 		if err != nil {
 			s.Log.WithError(err).Warn("failed getting header batch")
 		} else {
-			batch = append(batch, nextBatch[:min(int(limit)-len(batch), len(nextBatch))]...)
+			batch = append(batch, nextBatch[:Min(int(limit)-len(batch), len(nextBatch))]...)
 		}
 	}
 
@@ -460,16 +460,21 @@ func (s *DefaultService) GetBlockReceived(ctx context.Context, query TraceQuery)
 }
 
 func (s *DefaultService) getTailBlockReceived(ctx context.Context, limit uint64) ([]BidTraceWithTimestamp, error) {
+	start := s.state.Beacon().HeadSlot()
+	stop := start-Min(Slot(s.Config.TTL/DurationPerSlot), start-1)
 	batch := make([]HeaderAndTrace, 0, limit)
-	stop := s.state.Beacon().HeadSlot() - Slot(s.Config.TTL/DurationPerSlot)
 	queries := make([]Query, 0)
 
 	s.Log.WithField("limit", limit).
-		WithField("start", s.state.Beacon().HeadSlot()).
+		WithField("start", start).
 		WithField("stop", stop).
 		Debug("querying received block traces")
 
-	for highSlot := s.state.Beacon().HeadSlot(); len(batch) < int(limit) && stop <= highSlot; highSlot -= Slot(limit) {
+	for highSlot := start; len(batch) < int(limit) && stop <= highSlot; highSlot -= Min(Slot(limit), highSlot) {
+		println(highSlot)
+		if highSlot> start{
+			return nil, nil
+		}
 		queries = queries[:0]
 		for s := highSlot; highSlot-Slot(limit) < s && stop <= s; s-- {
 			queries = append(queries, Query{Slot: s})
@@ -479,7 +484,7 @@ func (s *DefaultService) getTailBlockReceived(ctx context.Context, limit uint64)
 		if err != nil {
 			s.Log.WithError(err).Warn("failed getting header batch")
 		} else {
-			batch = append(batch, nextBatch[:min(int(limit)-len(batch), len(nextBatch))]...)
+			batch = append(batch, nextBatch[:Min(int(limit)-len(batch), len(nextBatch))]...)
 		}
 	}
 

@@ -434,7 +434,7 @@ func (rs *DefaultRelay) SubmitBlock(ctx context.Context, submitBlockRequest *typ
 		"proposer":  submitBlockRequest.Message.ProposerPubkey,
 		"bid":       submitBlockRequest.Message.Value.String(),
 	})
-
+	
 	logger.Trace("block submission requested")
 
 	_, err := rs.verifyBlock(submitBlockRequest)
