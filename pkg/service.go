@@ -471,7 +471,6 @@ func (s *DefaultService) getTailBlockReceived(ctx context.Context, limit uint64)
 		Debug("querying received block traces")
 
 	for highSlot := start; len(batch) < int(limit) && stop <= highSlot; highSlot -= Min(Slot(limit), highSlot) {
-		println(highSlot)
 		if highSlot> start{
 			return nil, nil
 		}
