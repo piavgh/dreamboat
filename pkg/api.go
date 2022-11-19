@@ -193,7 +193,7 @@ func (a *API) getPayload(w http.ResponseWriter, r *http.Request) (int, error) {
 func (a *API) submitBlock(w http.ResponseWriter, r *http.Request) (int, error) {
 	var br types.BuilderSubmitBlockRequest
 	if err := json.NewDecoder(r.Body).Decode(&br); err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, errors.New("invalid payload")
 	}
 
 	if err := a.Service.SubmitBlock(r.Context(), &br); err != nil {
